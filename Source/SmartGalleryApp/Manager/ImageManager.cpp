@@ -95,24 +95,30 @@ void UImageManager::OnImagesLoaded(const TArray<FString>& ImagePaths)
 }
 
 // 파일을 UTexture2D로 변환  
-UTexture2D* UImageManager::LoadTextureFromFile(const FString& FilePath) {  
+UTexture2D* UImageManager::LoadTextureFromFile(const FString& FilePath) 
+{  
    TArray<uint8> FileData;  
-   if (!FFileHelper::LoadFileToArray(FileData, *FilePath)) {  
+   if (!FFileHelper::LoadFileToArray(FileData, *FilePath)) 
+   {  
        return nullptr;  
    }  
  
    IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));  
    EImageFormat ImageFormat = EImageFormat::JPEG;  
-   if (FilePath.EndsWith(".png")) {  
+   if (FilePath.EndsWith(".png")) 
+   {  
        ImageFormat = EImageFormat::PNG;  
    }  
  
    TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(ImageFormat);  
-   if (ImageWrapper.IsValid() && ImageWrapper->SetCompressed(FileData.GetData(), FileData.Num())) {  
+   if (ImageWrapper.IsValid() && ImageWrapper->SetCompressed(FileData.GetData(), FileData.Num())) 
+   {  
        TArray<uint8> UncompressedBGRA;  
-       if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBGRA)) {  
+       if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBGRA)) 
+	   {  
            UTexture2D* Texture = UTexture2D::CreateTransient(ImageWrapper->GetWidth(), ImageWrapper->GetHeight());  
-           if (Texture) {  
+           if (Texture) 
+		   {  
                void* TextureData = Texture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);  
                FMemory::Memcpy(TextureData, UncompressedBGRA.GetData(), UncompressedBGRA.Num());  
                Texture->GetPlatformData()->Mips[0].BulkData.Unlock();  
@@ -127,6 +133,55 @@ UTexture2D* UImageManager::LoadTextureFromFile(const FString& FilePath) {
 
 bool UImageManager::MoveImage(FString& ImagePath, FString& DestinationPath)
 {
+		
 	// Move image from ImagePath to DestinationPath
-	return true;
+#if PLATFORM_ANDROID
+	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv()) 
+	{
+		jclass Class = FAndroidApplication::FindJavaClass("com/YourCompany/SmartGalleryApp/AndroidGalleryHelper");
+		if (!Class) 
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to find AndroidGalleryHelper class"));
+			return false;
+		}
+
+		jmethodID MoveFileMethod = Env->GetStaticMethodID(Class, "moveImageFile", "(Ljava/lang/String;Ljava/lang/String;)Z");
+		if (!MoveFileMethod) 
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to find moveImageFile method"));
+			return false;
+		}
+
+		jstring JavaSrcPath = Env->NewStringUTF(TCHAR_TO_UTF8(*ImagePath));
+		jstring JavaDestPath = Env->NewStringUTF(TCHAR_TO_UTF8(*DestinationPath));
+
+		jboolean Result = Env->CallStaticBooleanMethod(Class, MoveFileMethod, JavaSrcPath, JavaDestPath);
+
+		Env->DeleteLocalRef(JavaSrcPath);
+		Env->DeleteLocalRef(JavaDestPath);
+		Env->DeleteLocalRef(Class);
+
+		if (Result) 
+		{
+			UE_LOG(LogTemp, Log, TEXT("Image moved successfully from %s to %s"), *ImagePath, *DestinationPath);
+			return true;
+		}
+	}
+#elif PLATFORM_DESKTOP
+	if (FPaths::FileExists(ImagePath))
+	{
+		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+		if (PlatformFile.MoveFile(*DestinationPath, *ImagePath))
+		{
+			UE_LOG(LogTemp, Log, TEXT("Image moved successfully"));
+			return true;
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("Image to move does not exist!"));
+	}
+#endif
+	UE_LOG(LogTemp, Error, TEXT("Failed to move image from %s to %s"), *ImagePath, *DestinationPath);
+	return false;
 }
