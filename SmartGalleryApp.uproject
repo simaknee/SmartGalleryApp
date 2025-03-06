@@ -24,6 +24,10 @@
 		{
 			"Name": "NNERuntimeBasicCpu",
 			"Enabled": true
+		},
+		{
+			"Name": "MobileNativeCode",
+			"Enabled": true
 		}
 	]
 }

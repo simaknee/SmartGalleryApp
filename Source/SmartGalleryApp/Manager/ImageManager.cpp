@@ -48,7 +48,7 @@ void UImageManager::LoadImages()
 {
 #if PLATFORM_ANDROID
 	TArray<FString> ImagePaths;
-	FAndroidGalleryHelper::LoadGalleryImages();
+	FAndroidGalleryHelper::OpenGalleryFolder();
 
 #elif PLATFORM_DESKTOP
 	// Load images from a directory

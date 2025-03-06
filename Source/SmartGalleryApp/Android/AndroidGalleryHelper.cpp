@@ -52,3 +52,53 @@ JNIEXPORT void JNICALL Java_com_YourCompany_SmartGalleryApp_AndroidGalleryHelper
 
     FAndroidGalleryHelper::OnGalleryImagesLoaded(ImageList);
 }
+
+void FAndroidGalleryHelper::OpenGalleryFolder()
+{
+#if PLATFORM_ANDROID
+    if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+    {
+        jclass Class = FAndroidApplication::FindJavaClass("com/YourCompany/SmartGalleryApp/AndroidGalleryHelper");
+        if (!Class)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to find AndroidGalleryHelper class"));
+            return;
+        }
+
+        jmethodID Constructor = Env->GetMethodID(Class, "<init>", "(Landroid/app/Activity;)V");
+        jobject Activity = FAndroidApplication::GetGameActivityThis();
+        jobject HelperInstance = Env->NewObject(Class, Constructor, Activity);
+
+        jmethodID OpenFolderMethod = Env->GetMethodID(Class, "openFolderPicker", "()V");
+        if (!OpenFolderMethod)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to find openFolderPicker method"));
+            return;
+        }
+
+        Env->CallVoidMethod(HelperInstance, OpenFolderMethod);
+        Env->DeleteLocalRef(HelperInstance);
+        Env->DeleteLocalRef(Class);
+    }
+#endif
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_YourCompany_SmartGalleryApp_AndroidGalleryHelper_nativeOnGalleryFolderSelected(JNIEnv* Env, jclass, jobjectArray ImagePaths)
+{
+    TArray<FString> ImageList;
+    jsize ArrayLength = Env->GetArrayLength(ImagePaths);
+
+    for (jsize i = 0; i < ArrayLength; i++)
+    {
+        jstring JavaString = (jstring)Env->GetObjectArrayElement(ImagePaths, i);
+        const char* PathChars = Env->GetStringUTFChars(JavaString, nullptr);
+        FString ImagePath(UTF8_TO_TCHAR(PathChars));
+        Env->ReleaseStringUTFChars(JavaString, PathChars);
+        Env->DeleteLocalRef(JavaString);
+
+        ImageList.Add(ImagePath);
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("Gallery Folder Selected: %d images"), ImageList.Num());
+    FAndroidGalleryHelper::OnGalleryImagesLoaded(ImageList);
+}

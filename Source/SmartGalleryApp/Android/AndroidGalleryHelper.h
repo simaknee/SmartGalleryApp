@@ -14,6 +14,6 @@ class FAndroidGalleryHelper {
 public:
     static void LoadGalleryImages();
     static void OnGalleryImagesLoaded(const TArray<FString>& ImagePaths);
-
+    static void OpenGalleryFolder();
     static FOnGalleryImagesLoaded OnGalleryImagesLoadedCallback;
 };
