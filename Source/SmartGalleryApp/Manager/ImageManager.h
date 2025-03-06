@@ -37,7 +37,6 @@ public:
 private:
 	void OnImagesLoaded(const TArray<FString>& ImagePaths);
 	
-	
 public:
 	UPROPERTY(BlueprintAssignable)
 	FOnImageLoadedDelegate OnImageLoadedEvent;

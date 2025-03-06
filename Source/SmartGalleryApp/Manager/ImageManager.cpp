@@ -101,20 +101,21 @@ UTexture2D* UImageManager::LoadTextureFromFile(const FString& FilePath)
    if (!FFileHelper::LoadFileToArray(FileData, *FilePath)) 
    {  
        return nullptr;  
-   }  
- 
+   }
+
    IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));  
    EImageFormat ImageFormat = EImageFormat::JPEG;  
    if (FilePath.EndsWith(".png")) 
    {  
        ImageFormat = EImageFormat::PNG;  
    }  
- 
+
    TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(ImageFormat);  
-   if (ImageWrapper.IsValid() && ImageWrapper->SetCompressed(FileData.GetData(), FileData.Num())) 
+   if (ImageWrapper.IsValid() && ImageWrapper->SetCompressed(FileData.GetData(), FileData.Num()))
    {  
        TArray<uint8> UncompressedBGRA;  
-       if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBGRA)) 
+	   // WARNING: Image taken by Samsung Android Galaxy Phone may cause error due to invalid SOS paramerters for sequential JPEG
+	   if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBGRA)) 
 	   {  
            UTexture2D* Texture = UTexture2D::CreateTransient(ImageWrapper->GetWidth(), ImageWrapper->GetHeight());  
            if (Texture) 
