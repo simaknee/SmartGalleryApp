@@ -44,14 +44,15 @@ void UImageManager::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 	// ...
 }
 
-void UImageManager::LoadImages()
+void UImageManager::LoadGallery()
 {
 #if PLATFORM_ANDROID
 	TArray<FString> ImagePaths;
+	// Call android API
 	FAndroidGalleryHelper::OpenGalleryFolder();
 
 #elif PLATFORM_DESKTOP
-	// Load images from a directory
+	// Load gallery from a directory
 	if (GEngine)
 	{
 		if (GEngine->GameViewport)
@@ -80,7 +81,7 @@ void UImageManager::LoadImages()
 						ImagePaths.Add(GalleryPath / ImageFile);
 
 					}
-					OnImagesLoaded(ImagePaths);
+					OnGalleryLoaded(ImagePaths);
 				}
 			}
 		}
@@ -88,10 +89,10 @@ void UImageManager::LoadImages()
 #endif
 }
 
-void UImageManager::OnImagesLoaded(const TArray<FString>& ImagePaths) 
+void UImageManager::OnGalleryLoaded(const TArray<FString>& ImagePaths)
 {
 	UE_LOG(LogTemp, Log, TEXT("Received %d images from gallery"), ImagePaths.Num());
-	OnImageLoadedEvent.Broadcast(ImagePaths);
+	OnGalleryLoadedEvent.Broadcast(ImagePaths);
 }
 
 // 파일을 UTexture2D로 변환  
