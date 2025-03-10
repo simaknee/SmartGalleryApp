@@ -29,6 +29,9 @@ public:
 	void LoadGallery();
 
 	UFUNCTION(BlueprintCallable)
+	void LoadImages();
+
+	UFUNCTION(BlueprintCallable)
 	class UTexture2D* LoadTextureFromFile(const FString& FilePath);
 
 	UFUNCTION(BlueprintCallable)
@@ -36,9 +39,11 @@ public:
 
 private:
 	void OnGalleryLoaded(const TArray<FString>& ImagePaths);
-	
+	void OnImagesLoaded(const TArray<FString>& ImagePaths);
+
 public:
 	UPROPERTY(BlueprintAssignable)
 	FOnGalleryLoadedDelegate OnGalleryLoadedEvent;
-		
+	UPROPERTY(BlueprintAssignable)
+	FOnGalleryLoadedDelegate OnImagesLoadedEvent;
 };

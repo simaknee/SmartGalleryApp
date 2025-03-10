@@ -22,7 +22,8 @@ UImageManager::UImageManager()
 	PrimaryComponentTick.bCanEverTick = true;
 
 #if PLATFORM_ANDROID
-	FAndroidGalleryHelper::OnGalleryImagesLoadedCallback.BindUObject(this, &UImageManager::OnImagesLoaded);
+	FAndroidGalleryHelper::OnGalleryImagesLoadedCallback.BindUObject(this, &UImageManager::OnGalleryLoaded);
+	FAndroidGalleryHelper::OnSelectedImagesLoadedCallback.BindUObject(this, &UImageManager::OnImagesLoaded);
 	// FAndroidPermissionHelper::RequestStoragePermission();
 #endif
 	// ...
@@ -93,6 +94,41 @@ void UImageManager::OnGalleryLoaded(const TArray<FString>& ImagePaths)
 {
 	UE_LOG(LogTemp, Log, TEXT("Received %d images from gallery"), ImagePaths.Num());
 	OnGalleryLoadedEvent.Broadcast(ImagePaths);
+}
+
+void UImageManager::LoadImages()
+{
+#if PLATFORM_ANDROID
+	TArray<FString> ImagePaths;
+	// Call android API
+	FAndroidGalleryHelper::OpenImagePicker();
+#elif PLATFORM_DESKTOP
+	// Open dialog to select images
+	if (GEngine)
+	{
+		if (GEngine->GameViewport)
+		{
+			void* ParentWindowHandle = GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle();
+			IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
+			if (DesktopPlatform)
+			{
+				// select one or multiple images
+				TArray<FString> SelectedFiles;
+				DesktopPlatform->OpenFileDialog(ParentWindowHandle, TEXT("Select Image(s)"), FPaths::ProjectDir(), TEXT(""), TEXT("Image Files (*.png;*.jpg)|*.png;*.jpg"), EFileDialogFlags::Multiple, SelectedFiles);
+				if (SelectedFiles.Num() > 0)
+				{
+					OnImagesLoaded(SelectedFiles);
+				}
+			}
+		}
+	}
+#endif
+}
+
+void UImageManager::OnImagesLoaded(const TArray<FString>& ImagePaths)
+{
+	UE_LOG(LogTemp, Log, TEXT("Received %d images"), ImagePaths.Num());
+	OnImagesLoadedEvent.Broadcast(ImagePaths);
 }
 
 // 파일을 UTexture2D로 변환  

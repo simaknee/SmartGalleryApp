@@ -224,6 +224,7 @@ https://docs.unrealengine.com/en-US/SharingAndReleasing/Mobile/UnrealPluginLangu
 	<gameActivityOnActivityResultAdditions>
 		<insert>
 			AndroidGalleryHelper.handleFolderResult(requestCode, resultCode, data);
+      AndroidGalleryHelper.handlePickImageResult(requestCode, resultCode, data);
 		</insert>
     </gameActivityOnActivityResultAdditions>
 

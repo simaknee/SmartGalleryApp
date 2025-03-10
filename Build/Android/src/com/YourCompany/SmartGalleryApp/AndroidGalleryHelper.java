@@ -19,6 +19,7 @@ public class AndroidGalleryHelper {
     private static native void OnGalleryImagesLoaded(String[] ImagePaths);
     private static final String TAG = "AndroidGalleryHelper";
     private static final int REQUEST_CODE_PICK_FOLDER = 9999;
+    private static final int REQUEST_CODE_PICK_IMAGES = 10000;
     private static AndroidGalleryHelper instance;
     private Activity activity;
 
@@ -58,8 +59,6 @@ public class AndroidGalleryHelper {
                 nativeOnGalleryFolderSelected(imagePaths.toArray(new String[0]));
             }
         }
-
-        
     }
 
     private static ArrayList<String> getImagesFromFolder(Uri folderUri) {
@@ -250,4 +249,53 @@ public class AndroidGalleryHelper {
             return false;
         }
     }
+
+    public void openImagePicker() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        activity.startActivityForResult(intent, REQUEST_CODE_PICK_IMAGES);
+    }
+
+    public static void handlePickImageResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_PICK_IMAGES && resultCode == Activity.RESULT_OK) {
+            ArrayList<String> imagePaths = new ArrayList<>();
+
+            if (data.getClipData() != null) {
+                int count = data.getClipData().getItemCount();
+                for (int i = 0; i < count; i++) {
+                    Uri imageUri = data.getClipData().getItemAt(i).getUri();
+                    String path = getPathFromUri(imageUri);
+                    if (path != null) {
+                        imagePaths.add(path);
+                    }
+                }
+            } else if (data.getData() != null) {
+                Uri imageUri = data.getData();
+                String path = getPathFromUri(imageUri);
+                if (path != null) {
+                    imagePaths.add(path);
+                }
+            }
+
+            if (!imagePaths.isEmpty()) {
+                nativeOnImagesSelected(imagePaths.toArray(new String[0]));
+            }
+        }
+    }
+
+    private static String getPathFromUri(Uri uri) {
+        Context context = instance.activity.getApplicationContext();
+        String[] projection = { MediaStore.Images.Media.DATA };
+        Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null);
+        if (cursor != null) {
+            int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            String path = cursor.getString(columnIndex);
+            cursor.close();
+            return path;
+        }
+        return null;
+    }
+    public static native void nativeOnImagesSelected(String[] imagePaths);
 }
+
