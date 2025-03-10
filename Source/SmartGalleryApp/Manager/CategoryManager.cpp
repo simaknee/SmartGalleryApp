@@ -13,6 +13,7 @@ UCategoryManager::UCategoryManager()
 	PrimaryComponentTick.bCanEverTick = false;
 
 	// ...
+	LoadCateogries();
 }
 
 
@@ -43,6 +44,7 @@ bool UCategoryManager::AddCategory(FCategory NewCategory)
 		}
 	}
 	int32 AddIndex = Categories.Add(NewCategory);
+	SaveCategories();
 	return 0 <= AddIndex;
 }
 
@@ -53,6 +55,7 @@ bool UCategoryManager::AddCategoryImage(FString CategoryName, TArray<FString> Im
 		if (Category.CategoryName == CategoryName)
 		{
 			Category.CategoryImagePaths.Append(ImagePaths);
+			SaveCategories();
 			OutCategory = Category;
 			return true;
 		}
@@ -98,5 +101,92 @@ bool UCategoryManager::DeleteCategoryImage(FString CategoryName, FString ImagePa
 	return false;
 }
 
+bool UCategoryManager::SaveCategories()
+{
+	FString BaseCategoryPath = FPaths::ProjectDir() / TEXT("Category");
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+	if (!PlatformFile.DirectoryExists(*BaseCategoryPath))
+	{
+		PlatformFile.CreateDirectory(*BaseCategoryPath);
+	}
+
+	// Save all categories
+	for (FCategory& Category : Categories)
+	{
+		FString CategoryPath = BaseCategoryPath / Category.CategoryName;
+
+		if (!PlatformFile.DirectoryExists(*CategoryPath))
+		{
+			PlatformFile.CreateDirectory(*CategoryPath);
+		}
+
+		TArray<FString> NewImagePaths;
+		for (const FString& ImagePath : Category.CategoryImagePaths)
+		{
+			
+			FString NewImagePath = CopyImageToCategoryFolder(ImagePath, CategoryPath);
+			if (!NewImagePath.IsEmpty())
+			{
+				NewImagePaths.Add(NewImagePath);
+			}
+		}
+
+		Category.CategoryImagePaths = NewImagePaths;
+	}
+
+	return true;
+}
+
+FString UCategoryManager::CopyImageToCategoryFolder(const FString& ImagePath, const FString& CategoryPath)
+{
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	FString FileName = FPaths::GetCleanFilename(ImagePath);
+	FString NewImagePath = CategoryPath / FileName;
+
+	if (PlatformFile.FileExists(*NewImagePath))
+	{
+		return NewImagePath;
+	}
+	else if (PlatformFile.CopyFile(*NewImagePath, *ImagePath))
+	{
+		return NewImagePath;
+	}
+	return "";
+}
+
+
+bool UCategoryManager::LoadCateogries()
+{
+	FString BaseCategoryPath = FPaths::ProjectDir() / TEXT("Category");
+	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+	if (!PlatformFile.DirectoryExists(*BaseCategoryPath))
+	{
+		PlatformFile.CreateDirectory(*BaseCategoryPath);
+	}
+
+	// Get all directories in the base category path
+	TArray<FString> AllFileDirectories;
+	PlatformFile.FindFilesRecursively(AllFileDirectories, *BaseCategoryPath, TEXT(""));
+	for (const FString& FileDirectory : AllFileDirectories)
+	{
+		FCategory Category;
+
+		// Get Folder Name (which is category name) from file directory
+		Category.CategoryName = FPaths::GetPathLeaf(FPaths::GetPath(FileDirectory));
+		
+		// skip if already added category
+		if (Categories.Contains(Category))
+		{
+			continue;
+		}
+		// Get all files in the category directory
+		TArray<FString> ImagePaths;
+		FString CategoryDirectory = BaseCategoryPath / Category.CategoryName;
+		PlatformFile.FindFilesRecursively(ImagePaths, *CategoryDirectory, TEXT(""));
+		Category.CategoryImagePaths = ImagePaths;
+		Categories.Add(Category);
+	}
+	return true;
 
 }

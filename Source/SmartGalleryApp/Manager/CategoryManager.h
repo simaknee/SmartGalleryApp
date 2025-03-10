@@ -56,6 +56,9 @@ public:
 	bool DeleteCategoryImage(FString CategoryName, FString ImagePath, FCategory& OutCategory);
 
 private:
+	bool SaveCategories();
+	bool LoadCateogries();
+	FString CopyImageToCategoryFolder(const FString& ImagePath, const FString& CategoryPath);
 
 public:
 	UPROPERTY(BlueprintReadWrite)
