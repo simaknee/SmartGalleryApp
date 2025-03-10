@@ -9,6 +9,7 @@
 #endif
 
 FOnGalleryImagesLoaded FAndroidGalleryHelper::OnGalleryImagesLoadedCallback;
+FOnGalleryImagesLoaded FAndroidGalleryHelper::OnSelectedImagesLoadedCallback;
 
 void FAndroidGalleryHelper::LoadGalleryImages() {
 #if PLATFORM_ANDROID
@@ -101,4 +102,62 @@ extern "C" JNIEXPORT void JNICALL Java_com_YourCompany_SmartGalleryApp_AndroidGa
 
     UE_LOG(LogTemp, Log, TEXT("Gallery Folder Selected: %d images"), ImageList.Num());
     FAndroidGalleryHelper::OnGalleryImagesLoaded(ImageList);
+}
+
+void FAndroidGalleryHelper::OpenImagePicker()
+{
+#if PLATFORM_ANDROID
+    if (JNIEnv* Env = FAndroidApplication::GetJavaEnv())
+    {
+        jclass Class = FAndroidApplication::FindJavaClass("com/YourCompany/SmartGalleryApp/AndroidGalleryHelper");
+        if (!Class)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to find AndroidGalleryHelper class"));
+            return;
+        }
+        jmethodID Constructor = Env->GetMethodID(Class, "<init>", "(Landroid/app/Activity;)V");
+        jobject Activity = FAndroidApplication::GetGameActivityThis();
+        jobject HelperInstance = Env->NewObject(Class, Constructor, Activity);
+
+        jmethodID OpenFolderMethod = Env->GetMethodID(Class, "openImagePicker", "()V");
+        if (!OpenFolderMethod)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to find openImagePicker method"));
+            return;
+        }
+
+        Env->CallVoidMethod(HelperInstance, OpenFolderMethod);
+        Env->DeleteLocalRef(HelperInstance);
+        Env->DeleteLocalRef(Class);
+    }
+#endif
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_YourCompany_SmartGalleryApp_AndroidGalleryHelper_nativeOnImagesSelected(JNIEnv* Env, jclass Cls, jobjectArray ImagePaths)
+{
+    int PathCount = Env->GetArrayLength(ImagePaths);
+    TArray<FString> SelectedImages;
+
+    for (int i = 0; i < PathCount; i++)
+    {
+        jstring JavaString = (jstring)Env->GetObjectArrayElement(ImagePaths, i);
+        const char* NativeString = Env->GetStringUTFChars(JavaString, 0);
+        FString ImagePath = FString(NativeString);
+        Env->ReleaseStringUTFChars(JavaString, NativeString);
+        SelectedImages.Add(ImagePath);
+    }
+
+    FAndroidGalleryHelper::OnSelectedImagesLoaded(SelectedImages);
+}
+
+void FAndroidGalleryHelper::OnSelectedImagesLoaded(const TArray<FString>& ImagePaths) {
+    UE_LOG(LogTemp, Log, TEXT("Images Loaded: %d images"), ImagePaths.Num());
+
+    AsyncTask(ENamedThreads::GameThread, [ImagePaths]() {
+        if (OnSelectedImagesLoadedCallback.IsBound()) {
+            OnSelectedImagesLoadedCallback.Execute(ImagePaths);
+        }
+        });
 }

@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "ImageManager.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnImageLoadedDelegate, const TArray<FString>&, LoadedImages);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGalleryLoadedDelegate, const TArray<FString>&, LoadedImages);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SMARTGALLERYAPP_API UImageManager : public UActorComponent
@@ -26,6 +26,9 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable)
+	void LoadGallery();
+
+	UFUNCTION(BlueprintCallable)
 	void LoadImages();
 
 	UFUNCTION(BlueprintCallable)
@@ -35,10 +38,12 @@ public:
 	bool MoveImage(FString& ImagePath, FString& DestinationPath);
 
 private:
+	void OnGalleryLoaded(const TArray<FString>& ImagePaths);
 	void OnImagesLoaded(const TArray<FString>& ImagePaths);
-	
+
 public:
 	UPROPERTY(BlueprintAssignable)
-	FOnImageLoadedDelegate OnImageLoadedEvent;
-		
+	FOnGalleryLoadedDelegate OnGalleryLoadedEvent;
+	UPROPERTY(BlueprintAssignable)
+	FOnGalleryLoadedDelegate OnImagesLoadedEvent;
 };
