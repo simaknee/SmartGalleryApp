@@ -64,7 +64,7 @@ bool UImageClassifier::LoadModel()
 	return false;
 }
 
-float UImageClassifier::RunModel(FString ImagePath1, FString ImagePath2)
+float UImageClassifier::RunModel(const FString& ImagePath1, const FString& ImagePath2)
 {
     if (!ModelInstance.IsValid())
     {
@@ -141,4 +141,32 @@ void UImageClassifier::LoadImageToTensorData(const FString& ImagePath, TArray<fl
             OutTensorData = MoveTemp(ConvertedData);
         }
     }
+}
+
+FCategory UImageClassifier::Classify(const FString& ImagePath, const TArray<FCategory>& Categories, float Threshold = 0.9f)
+{
+	if (!ModelInstance.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Model instance is not valid."));
+		return FCategory();
+	}
+    int BestIndex = -1;
+    float MaxSimilarity = 0.0f;
+	for (int i = 0; i < Categories.Num(); i++)
+	{
+		for (auto& CategoryImagePath : Categories[i].CategoryImagePaths)
+		{
+			float Similarity = RunModel(ImagePath, CategoryImagePath);
+			if (Similarity > MaxSimilarity && Similarity > Threshold)
+			{
+				MaxSimilarity = Similarity;
+				BestIndex = i;
+			}
+		}
+	}
+	if (BestIndex != -1)
+	{
+		return Categories[BestIndex];
+	}
+	return FCategory();
 }

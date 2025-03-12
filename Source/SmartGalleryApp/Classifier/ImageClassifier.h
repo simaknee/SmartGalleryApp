@@ -7,6 +7,7 @@
 #include "NNE.h"
 #include "NNERuntimeCPU.h"
 #include "NNEModelData.h"
+#include "../Manager/CategoryManager.h"
 #include "ImageClassifier.generated.h"
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -29,8 +30,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool LoadModel();
 	UFUNCTION(BlueprintCallable)
-	float RunModel(FString ImagePath1, FString ImagePath2);
-
+	float RunModel(const FString& ImagePath1, const FString& ImagePath2);
+	UFUNCTION(BlueprintCallable)
+	FCategory Classify(const FString& ImagePath, const TArray<FCategory>& Categories, float Threshold);
+	
 private:
 	void LoadImageToTensorData(const FString& ImagePath, TArray<float>& OutTensorData);
 
