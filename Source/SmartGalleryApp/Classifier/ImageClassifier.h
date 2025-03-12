@@ -10,6 +10,8 @@
 #include "../Manager/CategoryManager.h"
 #include "ImageClassifier.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnClassificationCompleteDelegate, const FString&, InputImagePath, const FCategory&, ResultCategory);
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SMARTGALLERYAPP_API UImageClassifier : public UActorComponent
 {
@@ -32,7 +34,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	float RunModel(const FString& ImagePath1, const FString& ImagePath2);
 	UFUNCTION(BlueprintCallable)
-	FCategory Classify(const FString& ImagePath, const TArray<FCategory>& Categories, float Threshold);
+	void Classify(const FString& ImagePath, const TArray<FCategory>& Categories, float Threshold);
 	
 private:
 	void LoadImageToTensorData(const FString& ImagePath, TArray<float>& OutTensorData);
@@ -40,8 +42,8 @@ private:
 public:
 	UPROPERTY(EditAnywhere)
 	TSoftObjectPtr<UNNEModelData> LazyLoadedModelData;
-	UPROPERTY(EditAnywhere)
-	int BatchSize;
+	UPROPERTY(BlueprintAssignable)
+	FOnClassificationCompleteDelegate OnClassificationCompleteEvent;
 
 private:
 	TSharedPtr<UE::NNE::IModelInstanceCPU> ModelInstance;

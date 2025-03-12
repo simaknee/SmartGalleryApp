@@ -13,7 +13,7 @@ UImageClassifier::UImageClassifier()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-	BatchSize = 4;
+
 	// ...
 }
 
@@ -143,30 +143,43 @@ void UImageClassifier::LoadImageToTensorData(const FString& ImagePath, TArray<fl
     }
 }
 
-FCategory UImageClassifier::Classify(const FString& ImagePath, const TArray<FCategory>& Categories, float Threshold = 0.9f)
+void UImageClassifier::Classify(const FString& ImagePath, const TArray<FCategory>& Categories, float Threshold = 0.9f)
 {
 	if (!ModelInstance.IsValid())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Model instance is not valid."));
-		return FCategory();
+        return;
 	}
-    int BestIndex = -1;
-    float MaxSimilarity = 0.0f;
-	for (int i = 0; i < Categories.Num(); i++)
-	{
-		for (auto& CategoryImagePath : Categories[i].CategoryImagePaths)
-		{
-			float Similarity = RunModel(ImagePath, CategoryImagePath);
-			if (Similarity > MaxSimilarity && Similarity > Threshold)
-			{
-				MaxSimilarity = Similarity;
-				BestIndex = i;
-			}
-		}
-	}
-	if (BestIndex != -1)
-	{
-		return Categories[BestIndex];
-	}
-	return FCategory();
+
+    // run model in the background thread
+    AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, ImagePath, Categories, Threshold]()
+        {
+            int BestIndex = -1;
+            float MaxSimilarity = 0.0f;
+            for (int i = 0; i < Categories.Num(); i++)
+            {
+                for (auto& CategoryImagePath : Categories[i].CategoryImagePaths)
+                {
+                    float Similarity = RunModel(ImagePath, CategoryImagePath);
+                    if (Similarity > MaxSimilarity && Similarity > Threshold)
+                    {
+                        MaxSimilarity = Similarity;
+                        BestIndex = i;
+                    }
+                }
+            }
+
+			// decide the best category as a result
+            FCategory ResultCategory;
+            if (BestIndex != -1)
+            {
+				ResultCategory = Categories[BestIndex];
+            }
+
+			// Broadcast delegate with the result in the main thread
+			AsyncTask(ENamedThreads::GameThread, [this, ImagePath, ResultCategory]()
+				{
+					this->OnClassificationCompleteEvent.Broadcast(ImagePath, ResultCategory);
+				});
+        });
 }
