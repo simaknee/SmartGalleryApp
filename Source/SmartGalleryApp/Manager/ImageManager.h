@@ -35,7 +35,7 @@ public:
 	class UTexture2D* LoadTextureFromFile(const FString& FilePath);
 
 	UFUNCTION(BlueprintCallable)
-	bool MoveImage(FString& ImagePath, FString& DestinationPath);
+	bool MoveImage(const FString& ImagePath, const FString& DestinationPath);
 
 private:
 	void OnGalleryLoaded(const TArray<FString>& ImagePaths);
@@ -46,4 +46,6 @@ public:
 	FOnGalleryLoadedDelegate OnGalleryLoadedEvent;
 	UPROPERTY(BlueprintAssignable)
 	FOnGalleryLoadedDelegate OnImagesLoadedEvent;
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FString> GalleryImagePaths;
 };

@@ -93,6 +93,7 @@ void UImageManager::LoadGallery()
 void UImageManager::OnGalleryLoaded(const TArray<FString>& ImagePaths)
 {
 	UE_LOG(LogTemp, Log, TEXT("Received %d images from gallery"), ImagePaths.Num());
+	GalleryImagePaths = ImagePaths;
 	OnGalleryLoadedEvent.Broadcast(ImagePaths);
 }
 
@@ -169,7 +170,7 @@ UTexture2D* UImageManager::LoadTextureFromFile(const FString& FilePath)
    return nullptr;  
 }
 
-bool UImageManager::MoveImage(FString& ImagePath, FString& DestinationPath)
+bool UImageManager::MoveImage(const FString& ImagePath, const FString& DestinationPath)
 {
 		
 	// Move image from ImagePath to DestinationPath
@@ -209,10 +210,16 @@ bool UImageManager::MoveImage(FString& ImagePath, FString& DestinationPath)
 	if (FPaths::FileExists(ImagePath))
 	{
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-		if (PlatformFile.MoveFile(*DestinationPath, *ImagePath))
+		if (PlatformFile.CreateDirectoryTree(*FPaths::GetPath(DestinationPath)))
 		{
-			UE_LOG(LogTemp, Log, TEXT("Image moved successfully"));
-			return true;
+			if (PlatformFile.MoveFile(*DestinationPath, *ImagePath))
+			{
+				return true;
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("Failed to create directory tree for destination path"));
 		}
 	}
 	else

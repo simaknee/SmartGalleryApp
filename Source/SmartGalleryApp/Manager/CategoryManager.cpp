@@ -13,7 +13,6 @@ UCategoryManager::UCategoryManager()
 	PrimaryComponentTick.bCanEverTick = false;
 
 	// ...
-	LoadCateogries();
 }
 
 
@@ -21,6 +20,7 @@ UCategoryManager::UCategoryManager()
 void UCategoryManager::BeginPlay()
 {
 	Super::BeginPlay();
+	LoadCateogries();
 }
 
 
