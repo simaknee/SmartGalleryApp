@@ -35,7 +35,7 @@ void FAndroidGalleryHelper::OnGalleryImagesLoaded(const TArray<FString>& ImagePa
         });
 }
 
-// Java -> C++ 콜백 (여러 이미지 경로 수신)
+// Receive result of loading gallery images (link between Java and C++)
 extern "C"
 JNIEXPORT void JNICALL Java_com_YourCompany_SmartGalleryApp_AndroidGalleryHelper_OnGalleryImagesLoaded(JNIEnv* Env, jclass, jobjectArray ImagePaths) {
     TArray<FString> ImageList;
@@ -84,6 +84,7 @@ void FAndroidGalleryHelper::OpenGalleryFolder()
 #endif
 }
 
+// Receive result of selecting a gallery folder (link between Java and C++)
 extern "C" JNIEXPORT void JNICALL Java_com_YourCompany_SmartGalleryApp_AndroidGalleryHelper_nativeOnGalleryFolderSelected(JNIEnv* Env, jclass, jobjectArray ImagePaths)
 {
     TArray<FString> ImageList;
@@ -133,6 +134,7 @@ void FAndroidGalleryHelper::OpenImagePicker()
 #endif
 }
 
+// Receive result of selecting images (link between Java and C++)
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_YourCompany_SmartGalleryApp_AndroidGalleryHelper_nativeOnImagesSelected(JNIEnv* Env, jclass Cls, jobjectArray ImagePaths)

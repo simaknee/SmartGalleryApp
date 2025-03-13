@@ -23,7 +23,7 @@ void UImageClassifier::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
+	// Lazy load the ONNX model data asynchronously
 	UAssetManager::GetStreamableManager().RequestAsyncLoad(LazyLoadedModelData.ToSoftObjectPath());
 }
 
@@ -38,12 +38,14 @@ void UImageClassifier::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 bool UImageClassifier::LoadModel()
 {
+	// Check if the model data is loaded
     if (!LazyLoadedModelData)
     {
         UE_LOG(LogTemp, Error, TEXT("The Model Data is not loaded"))
         return false;
     }
 
+	// Get the ONNX runtime
 	TWeakInterfacePtr<INNERuntimeCPU> Runtime = UE::NNE::GetRuntime<INNERuntimeCPU>(FString("NNERuntimeORTCpu"));
 
 	if (!Runtime.IsValid())
@@ -52,6 +54,7 @@ bool UImageClassifier::LoadModel()
         return false;
 	}
 
+    // Create runtime model
     TSharedPtr<UE::NNE::IModelCPU> Model = Runtime->CreateModelCPU(LazyLoadedModelData.Get());
 
     if (!Model.IsValid())
@@ -60,6 +63,7 @@ bool UImageClassifier::LoadModel()
         return false;
     }
 
+    // create model instance
     ModelInstance = Model->CreateModelInstanceCPU();
     if (!ModelInstance.IsValid())
     {
@@ -67,17 +71,20 @@ bool UImageClassifier::LoadModel()
 		return false;
     }
 
+	// Set input tensor shapes: {(1, 3, 224, 224), (1, 3, 224, 224)}
     TConstArrayView<UE::NNE::FTensorDesc> InputTensorDescs = ModelInstance->GetInputTensorDescs();
     checkf(InputTensorDescs.Num() == 2, TEXT("Siamese Network have two input tensors"));
     UE::NNE::FSymbolicTensorShape SymbolicInputTensorShape = InputTensorDescs[0].GetShape();
     UE::NNE::FTensorShape InputTensorShape = UE::NNE::FTensorShape::MakeFromSymbolic(SymbolicInputTensorShape);
     TArray< UE::NNE::FTensorShape > InputTensorShapes = { InputTensorShape, InputTensorShape };
     ModelInstance->SetInputTensorShapes(InputTensorShapes);
+
     return true;
 }
 
 float UImageClassifier::RunModel(const FString& ImagePath1, const FString& ImagePath2)
 {
+	// Check if the model instance is valid
     if (!ModelInstance.IsValid())
     {
         UE_LOG(LogTemp, Error, TEXT("Model instance is not valid."));
@@ -140,10 +147,10 @@ void UImageClassifier::LoadImageToTensorData(const FString& ImagePath, TArray<fl
         int32 Height = ImageWrapper->GetHeight();
         TArray<uint8> RawData;
 
-        // convert BGRA format to RGB format
+        // Convert BGRA format to RGB format
         if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, RawData))
         {
-			// load image data to tensor data with shape (3, 224, 224)
+			// Load image data to tensor data with shape (3, 224, 224)
             TArray<float> ConvertedData;
             ConvertedData.SetNumUninitialized(3 * 224 * 224);
 
@@ -172,7 +179,7 @@ void UImageClassifier::Classify(const FString& ImagePath, const TArray<FCategory
         return;
 	}
 
-    // run model in the background thread
+    // Run model in the background thread
     AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, ImagePath, Categories, Threshold]()
         {
             int BestIndex = -1;
@@ -181,6 +188,7 @@ void UImageClassifier::Classify(const FString& ImagePath, const TArray<FCategory
             {
                 for (auto& CategoryImagePath : Categories[i].CategoryImagePaths)
                 {
+					// Compare the image with the category images and get the most similar category
                     float Similarity = RunModel(ImagePath, CategoryImagePath);
                     if (Similarity > MaxSimilarity && Similarity > Threshold)
                     {
@@ -190,7 +198,7 @@ void UImageClassifier::Classify(const FString& ImagePath, const TArray<FCategory
                 }
             }
 
-			// decide the best category as a result
+			// Decide the best category as a result
             FCategory ResultCategory;
             if (BestIndex != -1)
             {

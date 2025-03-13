@@ -18,12 +18,15 @@ public:
 	ASGAGameMode();
 
 private:
+	// Category manager instance
 	UPROPERTY(EditAnywhere, Category= "SGA")
 	class UCategoryManager* CategoryManager;
 
+	// Image manager instance
 	UPROPERTY(EditAnywhere, Category = "SGA")
 	class UImageManager* ImageManager;
 
+	// Image classifier instance
 	UPROPERTY(EditAnywhere, Category = "SGA")
 	class UImageClassifier* ImageClassifier;
 };

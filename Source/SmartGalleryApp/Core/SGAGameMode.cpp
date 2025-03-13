@@ -8,6 +8,7 @@
 
 ASGAGameMode::ASGAGameMode()
 {
+	// Create Manager and Classifier instances
 	CategoryManager = CreateDefaultSubobject<UCategoryManager>(TEXT("CategoryManager"));
 	ImageManager = CreateDefaultSubobject<UImageManager>(TEXT("ImageManager"));
 	ImageClassifier = CreateDefaultSubobject<UImageClassifier>(TEXT("ImageClassifier"));

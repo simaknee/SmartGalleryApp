@@ -24,7 +24,6 @@ UImageManager::UImageManager()
 #if PLATFORM_ANDROID
 	FAndroidGalleryHelper::OnGalleryImagesLoadedCallback.BindUObject(this, &UImageManager::OnGalleryLoaded);
 	FAndroidGalleryHelper::OnSelectedImagesLoadedCallback.BindUObject(this, &UImageManager::OnImagesLoaded);
-	// FAndroidPermissionHelper::RequestStoragePermission();
 #endif
 	// ...
 }
@@ -58,15 +57,17 @@ void UImageManager::LoadGallery()
 	{
 		if (GEngine->GameViewport)
 		{
+			// Get the window handle
 			void* ParentWindowHandle = GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle();
 			IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
 			if (DesktopPlatform)
 			{
-				//Opening the file picker!
+				// Opening the file picker
 				FString GalleryPath;
 				DesktopPlatform->OpenDirectoryDialog(ParentWindowHandle, FString("Select your gallery folder"), FPaths::ProjectDir(), GalleryPath);
 				if (!GalleryPath.IsEmpty())
 				{
+					// Get all image files in the directory
 					TArray<FString> FoundFiles;
 					TArray<FString> ImagePaths;
 					IFileManager::Get().FindFiles(FoundFiles, *GalleryPath, TEXT("png"));
@@ -92,6 +93,7 @@ void UImageManager::LoadGallery()
 
 void UImageManager::OnGalleryLoaded(const TArray<FString>& ImagePaths)
 {
+	// Log the number of loaded images and broadcast event
 	UE_LOG(LogTemp, Log, TEXT("Received %d images from gallery"), ImagePaths.Num());
 	GalleryImagePaths = ImagePaths;
 	OnGalleryLoadedEvent.Broadcast(ImagePaths);
@@ -109,11 +111,12 @@ void UImageManager::LoadImages()
 	{
 		if (GEngine->GameViewport)
 		{
+			// Get the window handle
 			void* ParentWindowHandle = GEngine->GameViewport->GetWindow()->GetNativeWindow()->GetOSWindowHandle();
 			IDesktopPlatform* DesktopPlatform = FDesktopPlatformModule::Get();
 			if (DesktopPlatform)
 			{
-				// select one or multiple images
+				// select one or multiple images using file dialog
 				TArray<FString> SelectedFiles;
 				DesktopPlatform->OpenFileDialog(ParentWindowHandle, TEXT("Select Image(s)"), FPaths::ProjectDir(), TEXT(""), TEXT("Image Files (*.png;*.jpg)|*.png;*.jpg"), EFileDialogFlags::Multiple, SelectedFiles);
 				if (SelectedFiles.Num() > 0)
@@ -128,6 +131,7 @@ void UImageManager::LoadImages()
 
 void UImageManager::OnImagesLoaded(const TArray<FString>& ImagePaths)
 {
+	// Log the number of loaded images and broadcast event
 	UE_LOG(LogTemp, Log, TEXT("Received %d images"), ImagePaths.Num());
 	OnImagesLoadedEvent.Broadcast(ImagePaths);
 }
@@ -135,26 +139,30 @@ void UImageManager::OnImagesLoaded(const TArray<FString>& ImagePaths)
 // 파일을 UTexture2D로 변환  
 UTexture2D* UImageManager::LoadTextureFromFile(const FString& FilePath) 
 {  
+	// Load file bytes data
    TArray<uint8> FileData;  
    if (!FFileHelper::LoadFileToArray(FileData, *FilePath)) 
    {  
        return nullptr;  
    }
 
+   // Create image wrapper
    IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));  
    EImageFormat ImageFormat = EImageFormat::JPEG;  
    if (FilePath.EndsWith(".png")) 
    {  
        ImageFormat = EImageFormat::PNG;  
-   }  
-
+   } 
    TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(ImageFormat);  
+
+   // Decompress image data
    if (ImageWrapper.IsValid() && ImageWrapper->SetCompressed(FileData.GetData(), FileData.Num()))
    {  
        TArray<uint8> UncompressedBGRA;  
 	   // WARNING: Image taken by Samsung Android Galaxy Phone may cause error due to invalid SOS paramerters for sequential JPEG
 	   if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBGRA)) 
 	   {  
+		   // Create texture from image data
            UTexture2D* Texture = UTexture2D::CreateTransient(ImageWrapper->GetWidth(), ImageWrapper->GetHeight());  
            if (Texture) 
 		   {  
@@ -177,6 +185,7 @@ bool UImageManager::MoveImage(const FString& ImagePath, const FString& Destinati
 #if PLATFORM_ANDROID
 	if (JNIEnv* Env = FAndroidApplication::GetJavaEnv()) 
 	{
+		// Find AndroidGalleryHelper class
 		jclass Class = FAndroidApplication::FindJavaClass("com/YourCompany/SmartGalleryApp/AndroidGalleryHelper");
 		if (!Class) 
 		{
@@ -184,6 +193,7 @@ bool UImageManager::MoveImage(const FString& ImagePath, const FString& Destinati
 			return false;
 		}
 
+		// Find moveImageFile method
 		jmethodID MoveFileMethod = Env->GetStaticMethodID(Class, "moveImageFile", "(Ljava/lang/String;Ljava/lang/String;)Z");
 		if (!MoveFileMethod) 
 		{
@@ -191,6 +201,7 @@ bool UImageManager::MoveImage(const FString& ImagePath, const FString& Destinati
 			return false;
 		}
 
+		// Call moveImageFile method
 		jstring JavaSrcPath = Env->NewStringUTF(TCHAR_TO_UTF8(*ImagePath));
 		jstring JavaDestPath = Env->NewStringUTF(TCHAR_TO_UTF8(*DestinationPath));
 
@@ -209,9 +220,11 @@ bool UImageManager::MoveImage(const FString& ImagePath, const FString& Destinati
 #elif PLATFORM_DESKTOP
 	if (FPaths::FileExists(ImagePath))
 	{
+		// Create directory tree for destination path (if exist, it will not create)
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		if (PlatformFile.CreateDirectoryTree(*FPaths::GetPath(DestinationPath)))
 		{
+			// Move file to destination path
 			if (PlatformFile.MoveFile(*DestinationPath, *ImagePath))
 			{
 				return true;
