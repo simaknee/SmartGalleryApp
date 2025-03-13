@@ -38,30 +38,42 @@ void UImageClassifier::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 bool UImageClassifier::LoadModel()
 {
-	if (LazyLoadedModelData)
+    if (!LazyLoadedModelData)
+    {
+        UE_LOG(LogTemp, Error, TEXT("The Model Data is not loaded"))
+        return false;
+    }
+
+	TWeakInterfacePtr<INNERuntimeCPU> Runtime = UE::NNE::GetRuntime<INNERuntimeCPU>(FString("NNERuntimeORTCpu"));
+
+	if (!Runtime.IsValid())
 	{
-		TWeakInterfacePtr<INNERuntimeCPU> Runtime = UE::NNE::GetRuntime<INNERuntimeCPU>(FString("NNERuntimeORTCpu"));
-		if (Runtime.IsValid())
-		{
-			TSharedPtr<UE::NNE::IModelCPU> Model = Runtime->CreateModelCPU(LazyLoadedModelData.Get());
-			if (Model.IsValid())
-			{
-				ModelInstance = Model->CreateModelInstanceCPU();
-				if (ModelInstance.IsValid())
-				{
-					TConstArrayView<UE::NNE::FTensorDesc> InputTensorDescs = ModelInstance->GetInputTensorDescs();
-					checkf(InputTensorDescs.Num() == 2, TEXT("Siamese Network have two input tensors"));
-                    UE::NNE::FSymbolicTensorShape SymbolicInputTensorShape = InputTensorDescs[0].GetShape();
-                    UE::NNE::FTensorShape InputTensorShape = UE::NNE::FTensorShape::MakeFromSymbolic(SymbolicInputTensorShape);
-                    TArray< UE::NNE::FTensorShape > InputTensorShapes = { InputTensorShape, InputTensorShape };
-                    ModelInstance->SetInputTensorShapes(InputTensorShapes);
-					return true;
-				}
-				
-			}
-		}
+		UE_LOG(LogTemp, Error, TEXT("Failed to get NNERuntimeORTCpu"))
+        return false;
 	}
-	return false;
+
+    TSharedPtr<UE::NNE::IModelCPU> Model = Runtime->CreateModelCPU(LazyLoadedModelData.Get());
+
+    if (!Model.IsValid())
+    {
+		UE_LOG(LogTemp, Error, TEXT("Failed to create model on CPU"))
+        return false;
+    }
+
+    ModelInstance = Model->CreateModelInstanceCPU();
+    if (!ModelInstance.IsValid())
+    {
+		UE_LOG(LogTemp, Error, TEXT("Failed to create model instance on CPU"))
+		return false;
+    }
+
+    TConstArrayView<UE::NNE::FTensorDesc> InputTensorDescs = ModelInstance->GetInputTensorDescs();
+    checkf(InputTensorDescs.Num() == 2, TEXT("Siamese Network have two input tensors"));
+    UE::NNE::FSymbolicTensorShape SymbolicInputTensorShape = InputTensorDescs[0].GetShape();
+    UE::NNE::FTensorShape InputTensorShape = UE::NNE::FTensorShape::MakeFromSymbolic(SymbolicInputTensorShape);
+    TArray< UE::NNE::FTensorShape > InputTensorShapes = { InputTensorShape, InputTensorShape };
+    ModelInstance->SetInputTensorShapes(InputTensorShapes);
+    return true;
 }
 
 float UImageClassifier::RunModel(const FString& ImagePath1, const FString& ImagePath2)
@@ -80,13 +92,22 @@ float UImageClassifier::RunModel(const FString& ImagePath1, const FString& Image
     
     // Make input tensor bindings
     TArray<UE::NNE::FTensorBindingCPU> InputBindings;
-    InputBindings.Add(UE::NNE::FTensorBindingCPU(InputTensor1.GetData(), InputTensor1.Num() * sizeof(float)));
-    InputBindings.Add(UE::NNE::FTensorBindingCPU(InputTensor2.GetData(), InputTensor2.Num() * sizeof(float)));
+    UE::NNE::FTensorBindingCPU InputBinding1;
+    UE::NNE::FTensorBindingCPU InputBinding2;
+    InputBinding1.Data = InputTensor1.GetData();
+	InputBinding2.Data = InputTensor2.GetData();
+	InputBinding1.SizeInBytes = InputTensor1.Num() * sizeof(float);
+    InputBinding2.SizeInBytes = InputTensor2.Num() * sizeof(float);
+	InputBindings.Add(InputBinding1);
+    InputBindings.Add(InputBinding2);
 
     // Make output tensor bindings
     float OutputValue = 0.0f;
     TArray<UE::NNE::FTensorBindingCPU> OutputBindings;
-    OutputBindings.Add(UE::NNE::FTensorBindingCPU(&OutputValue, sizeof(float)));
+    UE::NNE::FTensorBindingCPU OutputBinding;
+    OutputBinding.Data = &OutputValue;
+    OutputBinding.SizeInBytes = sizeof(float);
+    OutputBindings.Add(OutputBinding);
 
     // Run model
     if (ModelInstance->RunSync(InputBindings, OutputBindings) != UE::NNE::IModelInstanceRunSync::ERunSyncStatus::Ok)
