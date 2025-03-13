@@ -14,4 +14,16 @@ class SMARTGALLERYAPP_API ASGAGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	
+public:
+	ASGAGameMode();
+
+private:
+	UPROPERTY(EditAnywhere, Category= "SGA")
+	class UCategoryManager* CategoryManager;
+
+	UPROPERTY(EditAnywhere, Category = "SGA")
+	class UImageManager* ImageManager;
+
+	UPROPERTY(EditAnywhere, Category = "SGA")
+	class UImageClassifier* ImageClassifier;
 };

@@ -13,5 +13,7 @@ UCLASS()
 class SMARTGALLERYAPP_API ASGAPlayerController : public APlayerController
 {
 	GENERATED_BODY()
+
+	ASGAPlayerController();
 	
 };
