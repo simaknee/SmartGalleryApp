@@ -41,8 +41,11 @@ bool UImageClassifier::LoadModel()
 	// Check if the model data is loaded
     if (!LazyLoadedModelData)
     {
-        UE_LOG(LogTemp, Error, TEXT("The Model Data is not loaded"))
-        return false;
+        if (LazyLoadedModelData.LoadSynchronous())
+        {
+            UE_LOG(LogTemp, Error, TEXT("The Model Data is not loaded"))
+            return false;
+        }
     }
 
 	// Get the ONNX runtime
