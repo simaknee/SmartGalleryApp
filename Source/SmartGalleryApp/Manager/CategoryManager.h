@@ -31,6 +31,7 @@ public:
 	}
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCategoryLoadedDelegate, const TArray<FCategory>&, LoadedCategories);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SMARTGALLERYAPP_API UCategoryManager : public UActorComponent
@@ -69,7 +70,7 @@ private:
 	// Save categories to the path, "{ProjectDir}/Category"
 	bool SaveCategories();
 	// Load categiries from the path, {ProjectDir}/Category
-	bool LoadCateogries();
+	void LoadCateogries();
 	// Copy an image file to a category folder
 	FString CopyImageToCategoryFolder(const FString& ImagePath, const FString& CategoryPath);
 
@@ -77,5 +78,6 @@ public:
 	// List of categories
 	UPROPERTY(BlueprintReadWrite)
 	TArray<FCategory> Categories;
-		
+	UPROPERTY(BlueprintAssignable)
+	FOnCategoryLoadedDelegate OnCategoryLoadedEvent;
 };

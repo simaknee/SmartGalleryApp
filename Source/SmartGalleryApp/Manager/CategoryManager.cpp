@@ -185,37 +185,50 @@ FString UCategoryManager::CopyImageToCategoryFolder(const FString& ImagePath, co
 }
 
 
-bool UCategoryManager::LoadCateogries()
+void UCategoryManager::LoadCateogries()
 {
-	FString BaseCategoryPath = FPaths::ProjectDir() / TEXT("Category");
-	IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-	if (!PlatformFile.DirectoryExists(*BaseCategoryPath))
-	{
-		PlatformFile.CreateDirectory(*BaseCategoryPath);
-	}
-
-	// Get all directories in the base category path
-	TArray<FString> AllFileDirectories;
-	PlatformFile.FindFilesRecursively(AllFileDirectories, *BaseCategoryPath, TEXT(""));
-	for (const FString& FileDirectory : AllFileDirectories)
-	{
-		FCategory Category;
-
-		// Get Folder Name (which is category name) from file directory
-		Category.CategoryName = FPaths::GetPathLeaf(FPaths::GetPath(FileDirectory));
-		
-		// skip if already added category
-		if (Categories.Contains(Category))
+	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this]()
 		{
-			continue;
-		}
-		// Get all files in the category directory
-		TArray<FString> ImagePaths;
-		FString CategoryDirectory = BaseCategoryPath / Category.CategoryName;
-		PlatformFile.FindFilesRecursively(ImagePaths, *CategoryDirectory, TEXT(""));
-		Category.CategoryImagePaths = ImagePaths;
-		Categories.Add(Category);
-	}
-	return true;
+			FString BaseCategoryPath = FPaths::ProjectDir() / TEXT("Category");
+			IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+			if (!PlatformFile.DirectoryExists(*BaseCategoryPath))
+			{
+				PlatformFile.CreateDirectory(*BaseCategoryPath);
+			}
+			UE_LOG(LogTemp, Log, TEXT("Load category data from %s"), *BaseCategoryPath);
+
+			// Get all directories in the base category path
+			TArray<FString> AllFileDirectories;
+			PlatformFile.FindFilesRecursively(AllFileDirectories, *BaseCategoryPath, TEXT(""));
+			for (const FString& FileDirectory : AllFileDirectories)
+			{
+				FCategory Category;
+
+				// Get Folder Name (which is category name) from file directory
+				Category.CategoryName = FPaths::GetPathLeaf(FPaths::GetPath(FileDirectory));
+
+				// skip if already added category
+				if (this->Categories.Contains(Category))
+				{
+					continue;
+				}
+				// Get all files in the category directory
+				TArray<FString> ImagePaths;
+				FString CategoryDirectory = BaseCategoryPath / Category.CategoryName;
+				PlatformFile.FindFilesRecursively(ImagePaths, *CategoryDirectory, TEXT(""));
+				Category.CategoryImagePaths = ImagePaths;
+
+				UE_LOG(LogTemp, Log, TEXT("Found a category named '%s'"), *Category.CategoryName)
+				this->Categories.Add(Category);
+				
+			}
+			AsyncTask(ENamedThreads::GameThread, [this]()
+				{
+					// Broadcast event with loaded categories
+					UE_LOG(LogTemp, Log, TEXT("Finished loading categories. Total %d categories loaded."), this->Categories.Num());
+					this->OnCategoryLoadedEvent.Broadcast(this->Categories);
+				});
+
+		});
 
 }
